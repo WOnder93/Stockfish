@@ -21,7 +21,7 @@
 #ifndef ENDGAME_H_INCLUDED
 #define ENDGAME_H_INCLUDED
 
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -90,13 +90,13 @@ struct Endgame : public EndgameBase<T> {
 
 
 /// The Endgames class stores the pointers to endgame evaluation and scaling
-/// base objects in two std::map. We use polymorphism to invoke the actual
-/// endgame function by calling its virtual operator().
+/// base objects in two std::unordered_map. We use polymorphism to invoke
+/// the actual endgame function by calling its virtual operator().
 
 class Endgames {
 
   template<typename T> using Ptr = std::unique_ptr<EndgameBase<T>>;
-  template<typename T> using Map = std::map<Key, Ptr<T>>;
+  template<typename T> using Map = std::unordered_map<Key, Ptr<T>>;
 
   template<typename T>
   Map<T>& map() {
