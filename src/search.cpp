@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <cstring>   // For std::memset
 #include <iostream>
 #include <sstream>
 
@@ -281,7 +280,7 @@ void MainThread::search() {
 
 void Thread::search() {
 
-  Stack stack[MAX_PLY+7], *ss = stack+4; // To reference from (ss-4) to (ss+2)
+  Stack stack[MAX_PLY+7];
   Value bestValue, alpha, beta, delta;
   Move  lastBestMove = MOVE_NONE;
   Depth lastBestMoveDepth = DEPTH_ZERO;
@@ -289,9 +288,11 @@ void Thread::search() {
   double timeReduction = 1.0;
   Color us = rootPos.side_to_move();
 
-  std::memset(ss-4, 0, 7 * sizeof(Stack));
-  for (int i = 4; i > 0; i--)
-     (ss-i)->contHistory = this->contHistory[NO_PIECE][0].get(); // Use as sentinel
+  for (int i = 0; i < 7; i++)
+      stack[i] = {};
+
+  for (int i = 0; i < 4; i++)
+      stack[i].contHistory = this->contHistory[NO_PIECE][0].get(); // Use as sentinel
 
   bestValue = delta = alpha = -VALUE_INFINITE;
   beta = VALUE_INFINITE;
@@ -362,7 +363,8 @@ void Thread::search() {
           // high/low anymore.
           while (true)
           {
-              bestValue = ::search<PV>(rootPos, ss, alpha, beta, rootDepth, false, false);
+              bestValue = ::search<PV>(rootPos, stack + 4, alpha, beta,
+                                       rootDepth, false, false);
 
               // Bring the best move to the front. It is critical that sorting
               // is done with a stable algorithm because all the values but the

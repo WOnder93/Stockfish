@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef> // For offsetof()
-#include <cstring> // For std::memset, std::memcmp
+#include <cstring> // For std::memcmp
 #include <iomanip>
 #include <sstream>
 
@@ -205,10 +205,13 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   Square sq = SQ_A8;
   std::istringstream ss(fenStr);
 
-  std::memset(this, 0, sizeof(Position));
-  std::memset(si, 0, sizeof(StateInfo));
-  std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
+  /* Reset to default values: */
+  this->~Position();
+  new(this) Position();
+
+  *si = {};
   st = si;
+  std::fill_n(&pieceList[0][0], sizeof(pieceList) / sizeof(Square), SQ_NONE);
 
   ss >> std::noskipws;
 

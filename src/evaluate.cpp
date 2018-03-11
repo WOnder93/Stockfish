@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstring>   // For std::memset
 #include <iomanip>
 #include <sstream>
 
@@ -39,7 +38,7 @@ namespace Trace {
     MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
   };
 
-  Score scores[TERM_NB][COLOR_NB];
+  std::array<std::array<Score, COLOR_NB>, TERM_NB> scores;
 
   double to_cp(Value v) { return double(v) / PawnValueEg; }
 
@@ -905,7 +904,7 @@ Value Eval::evaluate(const Position& pos) {
 
 std::string Eval::trace(const Position& pos) {
 
-  std::memset(scores, 0, sizeof(scores));
+  scores = {};
 
   Eval::Contempt = SCORE_ZERO; // Reset any dynamic contempt
 
