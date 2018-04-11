@@ -25,7 +25,9 @@
 #include "search.h"
 #include "thread.h"
 #include "uci.h"
+#ifdef USE_SYZYGY
 #include "syzygy/tbprobe.h"
+#endif
 
 ThreadPool Threads; // Global object
 
@@ -168,8 +170,10 @@ void ThreadPool::start_thinking(Position& pos, StateListPtr& states,
           || std::count(limits.searchmoves.begin(), limits.searchmoves.end(), m))
           rootMoves.emplace_back(m);
 
+#ifdef USE_SYZYGY
   if (!rootMoves.empty())
       Tablebases::filter_root_moves(pos, rootMoves);
+#endif
 
   // After ownership transfer 'states' becomes empty, so if we stop the search
   // and call 'go' again without setting a new position states.get() == NULL.

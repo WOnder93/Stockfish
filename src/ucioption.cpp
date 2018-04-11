@@ -27,7 +27,9 @@
 #include "thread.h"
 #include "tt.h"
 #include "uci.h"
+#ifdef USE_SYZYGY
 #include "syzygy/tbprobe.h"
+#endif
 
 using std::string;
 
@@ -40,7 +42,9 @@ void on_clear_hash(const Option&) { Search::clear(); }
 void on_hash_size(const Option& o) { TT.resize(o); }
 void on_logger(const Option& o) { start_logger(o); }
 void on_threads(const Option& o) { Threads.set(o); }
+#ifdef USE_SYZYGY
 void on_tb_path(const Option& o) { Tablebases::init(o); }
+#endif
 
 
 /// Our case insensitive less() function as required by UCI protocol
@@ -71,10 +75,12 @@ void init(OptionsMap& o) {
   o["Slow Mover"]            << Option(84, 10, 1000);
   o["nodestime"]             << Option(0, 0, 10000);
   o["UCI_Chess960"]          << Option(false);
+#ifdef USE_SYZYGY
   o["SyzygyPath"]            << Option("<empty>", on_tb_path);
   o["SyzygyProbeDepth"]      << Option(1, 1, 100);
   o["Syzygy50MoveRule"]      << Option(true);
   o["SyzygyProbeLimit"]      << Option(6, 0, 6);
+#endif
 }
 
 

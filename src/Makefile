@@ -34,7 +34,7 @@ PGOBENCH = ./$(EXE) bench
 ### Object files
 OBJS = benchmark.o bitbase.o bitboard.o endgame.o evaluate.o main.o \
 	material.o misc.o movegen.o movepick.o pawns.o position.o psqt.o \
-	search.o thread.o timeman.o tt.o uci.o ucioption.o syzygy/tbprobe.o
+	search.o thread.o timeman.o tt.o uci.o ucioption.o
 
 ### Establish the operating system name
 KERNEL = $(shell uname -s)
@@ -74,6 +74,7 @@ prefetch = no
 popcnt = no
 sse = no
 pext = no
+syzygy = yes
 
 ### 2.2 Architecture specific
 
@@ -350,6 +351,11 @@ ifeq ($(OS), Android)
 	LDFLAGS += -fPIE -pie
 endif
 
+### 3.10 Syzygy support
+ifeq ($(syzygy), yes)
+	CXXFLAGS += -DUSE_SYZYGY
+	OBJS += syzygy/tbprobe.o
+endif
 
 ### ==========================================================================
 ### Section 4. Public targets
@@ -468,6 +474,7 @@ config-sanity:
 	@echo "popcnt: '$(popcnt)'"
 	@echo "sse: '$(sse)'"
 	@echo "pext: '$(pext)'"
+	@echo "syzygy: '$(syzygy)'"
 	@echo ""
 	@echo "Flags:"
 	@echo "CXX: $(CXX)"
@@ -486,6 +493,7 @@ config-sanity:
 	@test "$(popcnt)" = "yes" || test "$(popcnt)" = "no"
 	@test "$(sse)" = "yes" || test "$(sse)" = "no"
 	@test "$(pext)" = "yes" || test "$(pext)" = "no"
+	@test "$(syzygy)" = "yes" || test "$(syzygy)" = "no"
 	@test "$(comp)" = "gcc" || test "$(comp)" = "icc" || test "$(comp)" = "mingw" || test "$(comp)" = "clang"
 
 $(EXE): $(OBJS)

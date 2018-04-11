@@ -35,12 +35,10 @@
 #include "timeman.h"
 #include "tt.h"
 #include "uci.h"
+
+#ifdef USE_SYZYGY
+
 #include "syzygy/tbprobe.h"
-
-namespace Search {
-
-  LimitsType Limits;
-}
 
 namespace Tablebases {
 
@@ -52,6 +50,13 @@ namespace Tablebases {
 }
 
 namespace TB = Tablebases;
+
+#endif // USE_SYZYGY
+
+namespace Search {
+
+  LimitsType Limits;
+}
 
 using std::string;
 using Eval::evaluate;
@@ -617,6 +622,7 @@ namespace {
         return ttValue;
     }
 
+#ifdef USE_SYZYGY
     // Step 5. Tablebases probe
     if (!rootNode && TB::Cardinality)
     {
@@ -663,6 +669,7 @@ namespace {
             }
         }
     }
+#endif
 
     // Step 6. Evaluate the position statically
     if (inCheck)
@@ -1536,7 +1543,10 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
   size_t PVIdx = pos.this_thread()->PVIdx;
   size_t multiPV = std::min((size_t)Options["MultiPV"], rootMoves.size());
   uint64_t nodesSearched = Threads.nodes_searched();
-  uint64_t tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+  uint64_t tbHits = 0;
+#ifdef USE_SYZYGY
+  tbHits = Threads.tb_hits() + (TB::RootInTB ? rootMoves.size() : 0);
+#endif
 
   for (size_t i = 0; i < multiPV; ++i)
   {
@@ -1548,8 +1558,12 @@ string UCI::pv(const Position& pos, Depth depth, Value alpha, Value beta) {
       Depth d = updated ? depth : depth - ONE_PLY;
       Value v = updated ? rootMoves[i].score : rootMoves[i].previousScore;
 
+#ifdef USE_SYZYGY
       bool tb = TB::RootInTB && abs(v) < VALUE_MATE - MAX_PLY;
       v = tb ? TB::Score : v;
+#else
+      bool tb = false;
+#endif
 
       if (ss.rdbuf()->in_avail()) // Not at first line
           ss << "\n";
@@ -1611,6 +1625,7 @@ bool RootMove::extract_ponder_from_tt(Position& pos) {
 }
 
 
+#ifdef USE_SYZYGY
 void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) {
 
     RootInTB = false;
@@ -1659,3 +1674,4 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
     for (RootMove& rm : rootMoves)
         rm.score = -VALUE_INFINITE;
 }
+#endif // USE_SYZYGY
