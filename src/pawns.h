@@ -27,56 +27,105 @@
 
 namespace Pawns {
 
+template<class T>
+static inline T get_bits(T w, int pos, int len)
+{
+    return (w >> pos) & ((T(1) << len) - 1);
+}
+
+template<class T>
+static inline void set_bits(T& w, int pos, int len, T val)
+{
+    w ^= ((val << pos) ^ w) & (((T(1) << len) - 1) << pos);
+}
+
 /// Pawns::Entry contains various information about a pawn structure. A lookup
 /// to the pawn hash table (performed by calling the probe function) returns a
 /// pointer to an Entry object.
 
-struct Entry {
+template<Color Us>
+struct ColorData {
+    /*
+     * w[0]:
+     *  0-10 -- mg score
+     * 11-21 -- eg score
+     * 22-45 -- ~pawn attacks span & OutpostRanks
+     * 46-49 -- pawns on dark squares
+     * 50-53 -- weak unopposed count
+     * 54-55 -- castling rights
+     * 56-62 -- king square
+     *
+     * w[1]:
+     *  0-47 -- passed pawns
+     * 48-55 -- semiopen files
+     *
+     * w[2]:
+     *  0-47 -- pawn attacks
+     * 48-60 -- king safety mg
+     * 61-63 -- min king-pawn distance
+     */
+    uint64_t w[3];
 
-  Score pawn_score(Color c) const { return scores[c]; }
-  Bitboard pawn_attacks(Color c) const { return pawnAttacks[c]; }
-  Bitboard passed_pawns(Color c) const { return passedPawns[c]; }
-  Bitboard pawn_attacks_span(Color c) const { return pawnAttacksSpan[c]; }
-  int weak_unopposed(Color c) const { return weakUnopposed[c]; }
-  int pawn_asymmetry() const { return asymmetry; }
-  int open_files() const { return openFiles; }
+    Score pawn_score() const {
+        int mg = int(get_bits(w[0],  0, 11)) - (1 << 10);
+        int eg = int(get_bits(w[0], 11, 11)) - (1 << 10);
+        return make_score(mg, eg);
+    }
+    Bitboard pawn_attacks_outpost() const {
+        return get_bits(w[0], 22, 24) << (Us == WHITE ? 16 : 24);
+    }
+    int pawns_on_dark_squares() const { return int(get_bits(w[0], 46,  4)); }
+    int weak_unopposed()        const { return int(get_bits(w[0], 50,  4)); }
+    int castling_rights()       const {
+        return int(get_bits(w[0], 54,  2)) << (Us == WHITE ? 0 : 2);
+    }
+    Square king_square()        const { return Square(get_bits(w[0], 56, 7)); }
 
-  int semiopen_file(Color c, File f) const {
-    return semiopenFiles[c] & (1 << f);
-  }
+    Bitboard passed_pawns() const {
+        return get_bits(w[1], 0, 48) << 8;
+    }
+    Bitboard semiopen_files() const { return     get_bits(w[1], 48, 8); }
+    int semiopen_file(File f) const { return int(get_bits(w[1], 48 + f, 1)); }
 
-  int pawns_on_same_color_squares(Color c, Square s) const {
-    return pawnsOnSquares[c][bool(DarkSquares & s)];
-  }
+    Bitboard pawn_attacks() const {
+        return get_bits(w[2], 0, 48) << (Us == WHITE ? 16 : 0);
+    }
+    Score king_safety(const Position& pos, Square ksq) {
+        if (   king_square() == ksq
+            && castling_rights() == pos.can_castle(Us)) {
+            int mg =       int(get_bits(w[2], 48, 13)) - (1 << 12);
+            int eg = -16 * int(get_bits(w[2], 61,  3));
+            return make_score(mg, eg);
+        }
+        return do_king_safety(pos, ksq);
+    }
 
-  template<Color Us>
-  Score king_safety(const Position& pos, Square ksq) {
-    return  kingSquares[Us] == ksq && castlingRights[Us] == pos.can_castle(Us)
-          ? kingSafety[Us] : (kingSafety[Us] = do_king_safety<Us>(pos, ksq));
-  }
+    int pawns_on_same_color_squares(const Position& pos, Square s) const {
+        int ds = pawns_on_dark_squares();
+        return DarkSquares & s ? ds : pos.count<PAWN>(Us) - ds;
+    }
 
-  template<Color Us>
-  Score do_king_safety(const Position& pos, Square ksq);
+    void init(const Position& pos);
 
-  template<Color Us>
-  Value evaluate_shelter(const Position& pos, Square ksq);
-
-  Key key;
-  Score scores[COLOR_NB];
-  Bitboard passedPawns[COLOR_NB];
-  Bitboard pawnAttacks[COLOR_NB];
-  Bitboard pawnAttacksSpan[COLOR_NB];
-  Square kingSquares[COLOR_NB];
-  Score kingSafety[COLOR_NB];
-  int weakUnopposed[COLOR_NB];
-  int castlingRights[COLOR_NB];
-  int semiopenFiles[COLOR_NB];
-  int pawnsOnSquares[COLOR_NB][COLOR_NB]; // [color][light/dark squares]
-  int asymmetry;
-  int openFiles;
+    Score do_king_safety(const Position& pos, Square ksq);
 };
 
-typedef HashTable<Entry, 16384> Table;
+struct Entry {
+  template<Color Us>
+  ColorData<Us>& data() { return std::get<Us == BLACK>(cd); }
+
+  template<Color Us>
+  const ColorData<Us>& data() const { return std::get<Us == BLACK>(cd); }
+
+  int pawn_asymmetry() const { return get_bits(common, 0, 4); }
+  int open_files()     const { return get_bits(common, 4, 4); }
+
+  Key key;
+  std::tuple<ColorData<WHITE>, ColorData<BLACK>> cd;
+  uint8_t common;
+};
+
+typedef HashTable<Entry, 2 * 16384> Table;
 
 void init();
 Entry* probe(const Position& pos);

@@ -257,14 +257,15 @@ namespace {
 
     // Find our pawns that are blocked or on the first two ranks
     Bitboard b = pos.pieces(Us, PAWN) & (shift<Down>(pos.pieces()) | LowRanks);
+    Bitboard pawnAttacksThem = pe->data<Them>().pawn_attacks();
 
     // Squares occupied by those pawns, by our king or queen, or controlled by enemy pawns
     // are excluded from the mobility area.
-    mobilityArea[Us] = ~(b | pos.pieces(Us, KING, QUEEN) | pe->pawn_attacks(Them));
+    mobilityArea[Us] = ~(b | pos.pieces(Us, KING, QUEEN) | pawnAttacksThem);
 
     // Initialise attackedBy bitboards for kings and pawns
     attackedBy[Us][KING] = pos.attacks_from<KING>(pos.square<KING>(Us));
-    attackedBy[Us][PAWN] = pe->pawn_attacks(Us);
+    attackedBy[Us][PAWN] = pe->data<Us>().pawn_attacks();
     attackedBy[Us][ALL_PIECES] = attackedBy[Us][KING] | attackedBy[Us][PAWN];
     attackedBy2[Us]            = attackedBy[Us][KING] & attackedBy[Us][PAWN];
 
@@ -281,7 +282,7 @@ namespace {
         else if (file_of(pos.square<KING>(Us)) == FILE_A)
             kingRing[Us] |= shift<EAST>(kingRing[Us]);
 
-        kingAttackersCount[Them] = popcount(kingRing[Us] & pe->pawn_attacks(Them));
+        kingAttackersCount[Them] = popcount(kingRing[Us] & pawnAttacksThem);
         kingAttacksCount[Them] = kingAttackersWeight[Them] = 0;
     }
     else
@@ -295,8 +296,7 @@ namespace {
 
     constexpr Color     Them = (Us == WHITE ? BLACK : WHITE);
     constexpr Direction Down = (Us == WHITE ? SOUTH : NORTH);
-    constexpr Bitboard OutpostRanks = (Us == WHITE ? Rank4BB | Rank5BB | Rank6BB
-                                                   : Rank5BB | Rank4BB | Rank3BB);
+
     const Square* pl = pos.squares<Pt>(Us);
 
     Bitboard b, bb;
@@ -336,7 +336,7 @@ namespace {
         if (Pt == BISHOP || Pt == KNIGHT)
         {
             // Bonus if piece is on an outpost square or can reach one
-            bb = OutpostRanks & ~pe->pawn_attacks_span(Them);
+            bb = pe->data<Them>().pawn_attacks_outpost();
             if (bb & s)
                 score += Outpost[Pt == BISHOP][bool(attackedBy[Us][PAWN] & s)] * 2;
 
@@ -354,7 +354,7 @@ namespace {
                 // bishop, bigger when the center files are blocked with pawns.
                 Bitboard blocked = pos.pieces(Us, PAWN) & shift<Down>(pos.pieces());
 
-                score -= BishopPawns * pe->pawns_on_same_color_squares(Us, s)
+                score -= BishopPawns * pe->data<Us>().pawns_on_same_color_squares(pos, s)
                                      * (1 + popcount(blocked & CenterFiles));
 
                 // Bonus for bishop on a long diagonal which can "see" both center squares
@@ -384,8 +384,8 @@ namespace {
                 score += RookOnPawn * popcount(pos.pieces(Them, PAWN) & PseudoAttacks[ROOK][s]);
 
             // Bonus for rook on an open or semi-open file
-            if (pe->semiopen_file(Us, file_of(s)))
-                score += RookOnFile[bool(pe->semiopen_file(Them, file_of(s)))];
+            if (pe->data<Us>().semiopen_file(file_of(s)))
+                score += RookOnFile[bool(pe->data<Them>().semiopen_file(file_of(s)))];
 
             // Penalty when trapped by the king, even more if the king cannot castle
             else if (mob <= 3)
@@ -423,7 +423,7 @@ namespace {
     Bitboard weak, b, b1, b2, safe, unsafeChecks;
 
     // King shelter and enemy pawns storm
-    Score score = pe->king_safety<Us>(pos, ksq);
+    Score score = pe->data<Us>().king_safety(pos, ksq);
 
     // Main king safety evaluation
     if (kingAttackersCount[Them] > 1 - pos.count<QUEEN>(Them))
@@ -573,7 +573,7 @@ namespace {
 
     // Bonus for enemy unopposed weak pawns
     if (pos.pieces(Us, ROOK, QUEEN))
-        score += WeakUnopposedPawn * pe->weak_unopposed(Them);
+        score += WeakUnopposedPawn * pe->data<Them>().weak_unopposed();
 
     // Our safe or protected pawns
     b =   pos.pieces(Us, PAWN)
@@ -639,7 +639,7 @@ namespace {
     Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
 
-    b = pe->passed_pawns(Us);
+    b = pe->data<Us>().passed_pawns();
 
     while (b)
     {
@@ -845,7 +845,7 @@ namespace {
 
     // Probe the pawn hash table
     pe = Pawns::probe(pos);
-    score += pe->pawn_score(WHITE) - pe->pawn_score(BLACK);
+    score += pe->data<WHITE>().pawn_score() - pe->data<BLACK>().pawn_score();
 
     // Early exit if score is high
     Value v = (mg_value(score) + eg_value(score)) / 2;
@@ -884,7 +884,7 @@ namespace {
     {
         Trace::add(MATERIAL, pos.psq_score());
         Trace::add(IMBALANCE, me->imbalance());
-        Trace::add(PAWN, pe->pawn_score(WHITE), pe->pawn_score(BLACK));
+        Trace::add(PAWN, pe->data<WHITE>().pawn_score(), pe->data<BLACK>().pawn_score());
         Trace::add(MOBILITY, mobility[WHITE], mobility[BLACK]);
         Trace::add(TOTAL, score);
     }
