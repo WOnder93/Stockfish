@@ -62,7 +62,6 @@ constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard SquareBB[SQUARE_NB];
 extern Bitboard FileBB[FILE_NB];
 extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
@@ -103,32 +102,42 @@ extern Magic RookMagics[SQUARE_NB];
 extern Magic BishopMagics[SQUARE_NB];
 
 
+/// make_bitboard() returns a bitboard from a list of squares
+
+constexpr Bitboard make_bitboard() { return 0; }
+
+template<typename ...Squares>
+constexpr Bitboard make_bitboard(Square s, Squares... squares) {
+  return (Bitboard(1) << s) | make_bitboard(squares...);
+}
+
+
 /// Overloads of bitwise operators between a Bitboard and a Square for testing
 /// whether a given bit is set in a bitboard, and for setting and clearing bits.
 
 inline Bitboard operator&(Bitboard b, Square s) {
   assert(s >= SQ_A1 && s <= SQ_H8);
-  return b & SquareBB[s];
+  return b & make_bitboard(s);
 }
 
 inline Bitboard operator|(Bitboard b, Square s) {
   assert(s >= SQ_A1 && s <= SQ_H8);
-  return b | SquareBB[s];
+  return b | make_bitboard(s);
 }
 
 inline Bitboard operator^(Bitboard b, Square s) {
   assert(s >= SQ_A1 && s <= SQ_H8);
-  return b ^ SquareBB[s];
+  return b ^ make_bitboard(s);
 }
 
 inline Bitboard& operator|=(Bitboard& b, Square s) {
   assert(s >= SQ_A1 && s <= SQ_H8);
-  return b |= SquareBB[s];
+  return b |= make_bitboard(s);
 }
 
 inline Bitboard& operator^=(Bitboard& b, Square s) {
   assert(s >= SQ_A1 && s <= SQ_H8);
-  return b ^= SquareBB[s];
+  return b ^= make_bitboard(s);
 }
 
 constexpr bool more_than_one(Bitboard b) {
@@ -152,16 +161,6 @@ inline Bitboard file_bb(File f) {
 
 inline Bitboard file_bb(Square s) {
   return FileBB[file_of(s)];
-}
-
-
-/// make_bitboard() returns a bitboard from a list of squares
-
-constexpr Bitboard make_bitboard() { return 0; }
-
-template<typename ...Squares>
-constexpr Bitboard make_bitboard(Square s, Squares... squares) {
-  return (1ULL << s) | make_bitboard(squares...);
 }
 
 

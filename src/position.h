@@ -406,7 +406,7 @@ inline void Position::move_piece(Piece pc, Square from, Square to) {
 
   // index[from] is not updated and becomes stale. This works as long as index[]
   // is accessed just by known occupied squares.
-  Bitboard from_to_bb = SquareBB[from] ^ SquareBB[to];
+  Bitboard from_to_bb = make_bitboard(from) ^ make_bitboard(to);
   byTypeBB[ALL_PIECES] ^= from_to_bb;
   byTypeBB[type_of(pc)] ^= from_to_bb;
   byColorBB[color_of(pc)] ^= from_to_bb;
