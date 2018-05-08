@@ -62,7 +62,6 @@ constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard FileBB[FILE_NB];
 extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
 extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
@@ -156,11 +155,11 @@ inline Bitboard rank_bb(Square s) {
 }
 
 inline Bitboard file_bb(File f) {
-  return FileBB[f];
+  return FileABB << f;
 }
 
 inline Bitboard file_bb(Square s) {
-  return FileBB[file_of(s)];
+  return FileABB << file_of(s);
 }
 
 
