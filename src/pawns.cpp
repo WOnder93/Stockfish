@@ -116,7 +116,7 @@ Entry* probe(const Position& pos) {
   e->key = key;
 
   e->common = 0;
-  e->common |= popcount(   w.passed_pawns()   | b.passed_pawns()
+  e->common |= popcount(  (w.passed_mask() << 16) | (b.passed_mask() << 8)
                         | (w.semiopen_files() ^ b.semiopen_files()));
   e->common |= popcount(w.semiopen_files() & b.semiopen_files()) << 4;
   return e;
@@ -200,6 +200,16 @@ void ColorData<Us>::init(const Position& pos) {
           score -= Doubled;
   }
 
+  unsigned passedMask = 0;
+  unsigned currMask = 1;
+  b = ourPawns;
+  while (b) {
+      s = pop_lsb(&b);
+      if (passedPawns & s)
+          passedMask |= currMask;
+      currMask <<= 1;
+  }
+
   assert(mg_value(score) < (1 << 10) && mg_value(score) >= -(1 << 10));
   assert(eg_value(score) < (1 << 10) && eg_value(score) >= -(1 << 10));
 
@@ -221,8 +231,7 @@ void ColorData<Us>::init(const Position& pos) {
   w[0] <<= 11; w[0] |= unsigned(mg_value(score) + (1 << 10));
 
   w[1] = semiopenFiles;
-  assert(!(passedPawns & (~((Bitboard(1) << 48) - 1) << 8)));
-  w[1] <<= 48; w[1] |= passedPawns >> 8;
+  w[1] <<= 8; w[1] |= passedMask;
 
   assert(!(pawnAttacks & (~((Bitboard(1) << 48) - 1) << (Us == WHITE ? 16 : 0))));
   w[2] = pawnAttacks >> (Us == WHITE ? 16 : 0);

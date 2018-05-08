@@ -636,14 +636,20 @@ namespace {
       return std::min(distance(pos.square<KING>(c), s), 5);
     };
 
-    Bitboard b, bb, squaresToQueen, defendedSquares, unsafeSquares;
+    Bitboard b, bb, passedMask, squaresToQueen, defendedSquares, unsafeSquares;
     Score score = SCORE_ZERO;
 
-    b = pe->data<Us>().passed_pawns();
+    passedMask = pe->data<Us>().passed_mask();
 
-    while (b)
+    b = pos.pieces(Us, PAWN);
+
+    while (passedMask)
     {
         Square s = pop_lsb(&b);
+        bool isPassed = passedMask & 1;
+        passedMask >>= 1;
+        if (!isPassed)
+            continue;
 
         assert(!(pos.pieces(Them, PAWN) & forward_file_bb(Us, s + Up)));
 

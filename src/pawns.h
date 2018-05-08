@@ -56,8 +56,8 @@ struct ColorData {
      * 56-62 -- king square
      *
      * w[1]:
-     *  0-47 -- passed pawns
-     * 48-55 -- semiopen files
+     *  0- 7 -- passed pawn mask
+     *  8-15 -- semiopen files
      *
      * w[2]:
      *  0-47 -- pawn attacks
@@ -81,11 +81,9 @@ struct ColorData {
     }
     Square king_square()        const { return Square(get_bits(w[0], 56, 7)); }
 
-    Bitboard passed_pawns() const {
-        return get_bits(w[1], 0, 48) << 8;
-    }
-    Bitboard semiopen_files() const { return     get_bits(w[1], 48, 8); }
-    int semiopen_file(File f) const { return int(get_bits(w[1], 48 + f, 1)); }
+    Bitboard passed_mask()    const { return     get_bits(w[1], 0, 8); }
+    Bitboard semiopen_files() const { return     get_bits(w[1], 8, 8); }
+    int semiopen_file(File f) const { return int(get_bits(w[1], 8 + f, 1)); }
 
     Bitboard pawn_attacks() const {
         return get_bits(w[2], 0, 48) << (Us == WHITE ? 16 : 0);
