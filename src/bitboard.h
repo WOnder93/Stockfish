@@ -62,7 +62,6 @@ constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 extern int SquareDistance[SQUARE_NB][SQUARE_NB];
 
-extern Bitboard RankBB[RANK_NB];
 extern Bitboard AdjacentFilesBB[FILE_NB];
 extern Bitboard ForwardRanksBB[COLOR_NB][RANK_NB];
 extern Bitboard BetweenBB[SQUARE_NB][SQUARE_NB];
@@ -147,11 +146,11 @@ constexpr bool more_than_one(Bitboard b) {
 /// the given file or rank.
 
 inline Bitboard rank_bb(Rank r) {
-  return RankBB[r];
+  return Rank1BB << (8 * r);
 }
 
 inline Bitboard rank_bb(Square s) {
-  return RankBB[rank_of(s)];
+  return rank_bb(rank_of(s));
 }
 
 inline Bitboard file_bb(File f) {
@@ -159,7 +158,7 @@ inline Bitboard file_bb(File f) {
 }
 
 inline Bitboard file_bb(Square s) {
-  return FileABB << file_of(s);
+  return file_bb(file_of(s));
 }
 
 
