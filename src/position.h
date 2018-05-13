@@ -121,6 +121,7 @@ public:
   bool pseudo_legal(const Move m) const;
   bool capture(Move m) const;
   bool capture_or_promotion(Move m) const;
+  bool gives_check_castling(Square kfrom, Square rfom, Square kto, Square rto) const;
   bool gives_check(Move m) const;
   bool advanced_pawn_push(Move m) const;
   Piece moved_piece(Move m) const;
@@ -359,6 +360,11 @@ inline bool Position::is_chess960() const {
 inline bool Position::capture_or_promotion(Move m) const {
   assert(is_ok(m));
   return type_of(m) != NORMAL ? type_of(m) != CASTLING : !empty(to_sq(m));
+}
+
+inline bool Position::gives_check_castling(Square kfrom, Square rfrom, Square kto, Square rto) const {
+    return   (PseudoAttacks[ROOK][rto] & square<KING>(~sideToMove))
+          && (attacks_bb<ROOK>(rto, (pieces() ^ kfrom ^ rfrom) | rto | kto) & square<KING>(~sideToMove));
 }
 
 inline bool Position::capture(Move m) const {

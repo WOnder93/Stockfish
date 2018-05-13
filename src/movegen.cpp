@@ -38,6 +38,7 @@ namespace {
     Square kfrom = pos.square<KING>(us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
+    Square rto = relative_square(us, KingSide ? SQ_F1 : SQ_D1);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.checkers());
@@ -57,7 +58,7 @@ namespace {
 
     Move m = make<CASTLING>(kfrom, rfrom);
 
-    if (Checks && !pos.gives_check(m))
+    if (Checks && !pos.gives_check_castling(kfrom, rfrom, kto, rto))
         return moveList;
 
     *moveList++ = m;
