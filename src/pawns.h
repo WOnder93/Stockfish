@@ -123,7 +123,7 @@ struct Entry {
   uint8_t common;
 };
 
-typedef HashTable<Entry, 2 * 16384> Table;
+typedef HashTable<Entry, 16384> Table;
 
 void init();
 Entry* probe(const Position& pos);
