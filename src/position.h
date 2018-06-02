@@ -37,6 +37,7 @@
 struct StateInfo {
 
   // Copied when making a move
+  Key    key;
   Key    pawnKey;
   Key    materialKey;
   Value  nonPawnMaterial[COLOR_NB];
@@ -47,7 +48,6 @@ struct StateInfo {
   Square epSquare;
 
   // Not copied when making a move (will be recomputed anyhow)
-  Key        key;
   Bitboard   checkersBB;
   Piece      capturedPiece;
   StateInfo* previous;
