@@ -718,7 +718,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(&newSt != st);
 
   thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
-  Key k = st->key ^ Zobrist::side;
+  Key key = st->key ^ Zobrist::side;
+  Key pawnKey = st->pawnKey;
+  Key materialKey = st->materialKey;
 
   // Copy some fields of the old state to our new StateInfo object except the
   // ones which are going to be recalculated from scratch anyway and then switch
@@ -753,7 +755,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       do_castling<true>(us, from, to, rfrom, rto);
 
       st->psq += PSQT::psq[captured][rto] - PSQT::psq[captured][rfrom];
-      k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
+      key ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
       captured = NO_PIECE;
   }
 
@@ -778,7 +780,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
               board[capsq] = NO_PIECE; // Not done by remove_piece()
           }
 
-          st->pawnKey ^= Zobrist::psq[captured][capsq];
+          pawnKey ^= Zobrist::psq[captured][capsq];
       }
       else
           st->nonPawnMaterial[them] -= PieceValue[MG][captured];
@@ -787,9 +789,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       remove_piece(captured, capsq);
 
       // Update material hash key and prefetch access to materialTable
-      k ^= Zobrist::psq[captured][capsq];
-      st->materialKey ^= Zobrist::psq[captured][pieceCount[captured]];
-      prefetch(thisThread->materialTable[st->materialKey]);
+      key ^= Zobrist::psq[captured][capsq];
+      materialKey ^= Zobrist::psq[captured][pieceCount[captured]];
+      prefetch(thisThread->materialTable[materialKey]);
 
       // Update incremental scores
       st->psq -= PSQT::psq[captured][capsq];
@@ -799,12 +801,12 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   }
 
   // Update hash key
-  k ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+  key ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
 
   // Reset en passant square
   if (st->epSquare != SQ_NONE)
   {
-      k ^= Zobrist::enpassant[file_of(st->epSquare)];
+      key ^= Zobrist::enpassant[file_of(st->epSquare)];
       st->epSquare = SQ_NONE;
   }
 
@@ -812,7 +814,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   if (st->castlingRights && (castlingRightsMask[from] | castlingRightsMask[to]))
   {
       int cr = castlingRightsMask[from] | castlingRightsMask[to];
-      k ^= Zobrist::castling[st->castlingRights & cr];
+      key ^= Zobrist::castling[st->castlingRights & cr];
       st->castlingRights &= ~cr;
   }
 
@@ -828,7 +830,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           && (attacks_from<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
       {
           st->epSquare = to - pawn_push(us);
-          k ^= Zobrist::enpassant[file_of(st->epSquare)];
+          key ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
       else if (type_of(m) == PROMOTION)
@@ -842,9 +844,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           put_piece(promotion, to);
 
           // Update hash keys
-          k ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
-          st->pawnKey ^= Zobrist::psq[pc][to];
-          st->materialKey ^=  Zobrist::psq[promotion][pieceCount[promotion]-1]
+          key ^= Zobrist::psq[pc][to] ^ Zobrist::psq[promotion][to];
+          pawnKey ^= Zobrist::psq[pc][to];
+          materialKey ^=  Zobrist::psq[promotion][pieceCount[promotion]-1]
                             ^ Zobrist::psq[pc][pieceCount[pc]];
 
           // Update incremental score
@@ -855,8 +857,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       }
 
       // Update pawn hash key and prefetch access to pawnsTable
-      st->pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
-      prefetch2(thisThread->pawnsTable[st->pawnKey]);
+      pawnKey ^= Zobrist::psq[pc][from] ^ Zobrist::psq[pc][to];
+      prefetch2(thisThread->pawnsTable[pawnKey]);
 
       // Reset rule 50 draw counter
       st->rule50 = 0;
@@ -869,7 +871,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   st->capturedPiece = captured;
 
   // Update the key with the final value
-  st->key = k;
+  st->key = key;
+  st->pawnKey = pawnKey;
+  st->materialKey = materialKey;
 
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;

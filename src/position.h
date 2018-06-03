@@ -37,8 +37,6 @@
 struct StateInfo {
 
   // Copied when making a move
-  Key    pawnKey;
-  Key    materialKey;
   Value  nonPawnMaterial[COLOR_NB];
   int    castlingRights;
   int    rule50;
@@ -48,6 +46,8 @@ struct StateInfo {
 
   // Not copied when making a move (will be recomputed anyhow)
   Key        key;
+  Key        pawnKey;
+  Key        materialKey;
   Bitboard   checkersBB;
   Piece      capturedPiece;
   StateInfo* previous;
