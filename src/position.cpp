@@ -263,6 +263,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       }
   }
 
+  // 1.1. Non-pawn material
+  for (Piece pc : Pieces)
+      if (type_of(pc) != PAWN && type_of(pc) != KING)
+          nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
+
   // 2. Active color
   ss >> token;
   sideToMove = (token == 'w' ? WHITE : BLACK);
@@ -380,7 +385,6 @@ void Position::set_state(StateInfo* si) const {
 
   si->key = si->materialKey = 0;
   si->pawnKey = Zobrist::noPawns;
-  si->nonPawnMaterial[WHITE] = si->nonPawnMaterial[BLACK] = VALUE_ZERO;
   si->psq = SCORE_ZERO;
   si->checkersBB = attackers_to(square<KING>(sideToMove)) & pieces(~sideToMove);
 
@@ -409,13 +413,8 @@ void Position::set_state(StateInfo* si) const {
   }
 
   for (Piece pc : Pieces)
-  {
-      if (type_of(pc) != PAWN && type_of(pc) != KING)
-          si->nonPawnMaterial[color_of(pc)] += pieceCount[pc] * PieceValue[MG][pc];
-
       for (int cnt = 0; cnt < pieceCount[pc]; ++cnt)
           si->materialKey ^= Zobrist::psq[pc][cnt];
-  }
 }
 
 
@@ -781,7 +780,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->pawnKey ^= Zobrist::psq[captured][capsq];
       }
       else
-          st->nonPawnMaterial[them] -= PieceValue[MG][captured];
+          nonPawnMaterial[them] -= PieceValue[MG][captured];
 
       // Update board and piece lists
       remove_piece(captured, capsq);
@@ -851,7 +850,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           st->psq += PSQT::psq[promotion][to] - PSQT::psq[pc][to];
 
           // Update material
-          st->nonPawnMaterial[us] += PieceValue[MG][promotion];
+          nonPawnMaterial[us] += PieceValue[MG][promotion];
       }
 
       // Update pawn hash key and prefetch access to pawnsTable
@@ -893,6 +892,7 @@ void Position::undo_move(Move m) {
   sideToMove = ~sideToMove;
 
   Color us = sideToMove;
+  Color them = ~us;
   Square from = from_sq(m);
   Square to = to_sq(m);
   Piece pc = piece_on(to);
@@ -905,6 +905,9 @@ void Position::undo_move(Move m) {
       assert(relative_rank(us, to) == RANK_8);
       assert(type_of(pc) == promotion_type(m));
       assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
+
+      // Update material
+      nonPawnMaterial[us] -= PieceValue[MG][pc];
 
       remove_piece(pc, to);
       pc = make_piece(us, PAWN);
@@ -924,11 +927,12 @@ void Position::undo_move(Move m) {
       {
           Square capsq = to;
 
-          if (type_of(m) == ENPASSANT)
+          if (type_of(st->capturedPiece) != PAWN)
+              nonPawnMaterial[them] += PieceValue[MG][st->capturedPiece];
+          else if (type_of(m) == ENPASSANT)
           {
               capsq -= pawn_push(us);
 
-              assert(type_of(pc) == PAWN);
               assert(to == st->previous->epSquare);
               assert(relative_rank(us, to) == RANK_6);
               assert(piece_on(capsq) == NO_PIECE);

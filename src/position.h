@@ -39,7 +39,6 @@ struct StateInfo {
   // Copied when making a move
   Key    pawnKey;
   Key    materialKey;
-  Value  nonPawnMaterial[COLOR_NB];
   int    castlingRights;
   int    rule50;
   int    pliesFromNull;
@@ -188,6 +187,7 @@ private:
   Bitboard castlingPath[CASTLING_RIGHT_NB];
   int gamePly;
   Color sideToMove;
+  Value  nonPawnMaterial[COLOR_NB];
   Thread* thisThread;
   StateInfo* st;
   bool chess960;
@@ -331,11 +331,11 @@ inline Score Position::psq_score() const {
 }
 
 inline Value Position::non_pawn_material(Color c) const {
-  return st->nonPawnMaterial[c];
+  return nonPawnMaterial[c];
 }
 
 inline Value Position::non_pawn_material() const {
-  return st->nonPawnMaterial[WHITE] + st->nonPawnMaterial[BLACK];
+  return nonPawnMaterial[WHITE] + nonPawnMaterial[BLACK];
 }
 
 inline int Position::game_ply() const {
