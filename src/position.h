@@ -349,7 +349,8 @@ inline int Position::rule50_count() const {
 inline bool Position::opposite_bishops() const {
   return   pieceCount[W_BISHOP] == 1
         && pieceCount[B_BISHOP] == 1
-        && opposite_colors(square<BISHOP>(WHITE), square<BISHOP>(BLACK));
+        &&    !(pieces(WHITE, BISHOP) & DarkSquares)
+           != !(pieces(BLACK, BISHOP) & DarkSquares);
 }
 
 inline bool Position::is_chess960() const {
