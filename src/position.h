@@ -319,8 +319,8 @@ inline bool Position::advanced_pawn_push(Move m) const {
 }
 
 static inline Key ttKey(Key key, int rule50) {
-  constexpr int Rule50Shift = 3;
-  return key ^ (Key(rule50 >> Rule50Shift) << (32 - (7 - Rule50Shift)));
+  constexpr int Rule50MaxShift = 3;
+  return key ^ (Key(std::min(rule50, 1 << Rule50MaxShift)) << (32 - Rule50MaxShift));
 }
 
 inline Key Position::key() const {
