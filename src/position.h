@@ -319,7 +319,8 @@ inline bool Position::advanced_pawn_push(Move m) const {
 }
 
 inline Key Position::key() const {
-  return st->key;
+  constexpr int Rule50Shift = 3;
+  return st->key ^ (Key(st->rule50 >> Rule50Shift) << (32 - (7 - Rule50Shift)));
 }
 
 inline Key Position::pawn_key() const {
