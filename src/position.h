@@ -318,9 +318,13 @@ inline bool Position::advanced_pawn_push(Move m) const {
         && relative_rank(sideToMove, from_sq(m)) > RANK_4;
 }
 
-inline Key Position::key() const {
+static inline Key ttKey(Key key, int rule50) {
   constexpr int Rule50Shift = 3;
-  return st->key ^ (Key(st->rule50 >> Rule50Shift) << (32 - (7 - Rule50Shift)));
+  return key ^ (Key(rule50 >> Rule50Shift) << (32 - (7 - Rule50Shift)));
+}
+
+inline Key Position::key() const {
+  return ttKey(st->key, st->rule50);
 }
 
 inline Key Position::pawn_key() const {

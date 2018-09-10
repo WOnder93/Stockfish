@@ -971,9 +971,9 @@ void Position::do_null_move(StateInfo& newSt) {
   }
 
   st->key ^= Zobrist::side;
-  prefetch(TT.first_entry(st->key));
-
   ++st->rule50;
+  prefetch(TT.first_entry(key()));
+
   st->pliesFromNull = 0;
 
   sideToMove = ~sideToMove;
@@ -1003,11 +1003,15 @@ Key Position::key_after(Move m) const {
   Piece pc = piece_on(from);
   Piece captured = piece_on(to);
   Key k = st->key ^ Zobrist::side;
+  int rule50 = st->rule50 + 1;
 
   if (captured)
       k ^= Zobrist::psq[captured][to];
 
-  return k ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from];
+  if (captured || type_of(pc) == PAWN)
+      rule50 = 0;
+
+  return ttKey(k ^ Zobrist::psq[pc][to] ^ Zobrist::psq[pc][from], rule50);
 }
 
 
