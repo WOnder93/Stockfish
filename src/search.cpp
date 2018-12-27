@@ -254,29 +254,47 @@ void MainThread::search() {
       && !Skill(Options["Skill Level"]).enabled()
       &&  rootMoves[0].pv[0] != MOVE_NONE)
   {
-      std::map<Move, int64_t> votes;
-      Value minScore = this->rootMoves[0].score;
+      struct MoveStats {
+          int votes;
+          int bestDepth;
+          Value bestValue;
+      };
+
+      std::map<Move, MoveStats> votes;
 
       // Find out minimum score and reset votes for moves which can be voted
       for (Thread* th: Threads)
-      {
-          minScore = std::min(minScore, th->rootMoves[0].score);
-          votes[th->rootMoves[0].pv[0]] = 0;
-      }
+          votes[th->rootMoves[0].pv[0]] = {};
 
       // Vote according to score and depth
-      auto square = [](int64_t x) { return x * x; };
-      for (Thread* th : Threads)
-          votes[th->rootMoves[0].pv[0]] += 200 + (square(th->rootMoves[0].score - minScore + 1)
-                                                  * int64_t(th->completedDepth));
-
-      // Select best thread
-      int64_t bestVote = votes[this->rootMoves[0].pv[0]];
       for (Thread* th : Threads)
       {
-          if (votes[th->rootMoves[0].pv[0]] > bestVote)
+          MoveStats &stats = votes[th->rootMoves[0].pv[0]];
+          stats.votes += 1;
+          if (th->rootMoves[0].score >= VALUE_KNOWN_WIN)
           {
-              bestVote = votes[th->rootMoves[0].pv[0]];
+              stats.bestDepth = int(MAX_PLY * ONE_PLY);
+              stats.bestValue = th->rootMoves[0].score;
+          }
+          else if (th->completedDepth > stats.bestDepth)
+          {
+              stats.bestDepth = int(th->completedDepth);
+              stats.bestValue = th->rootMoves[0].score;
+          }
+      }
+
+      // Select best thread
+      int bestDepth = -1;
+      int64_t bestVote = INT64_MIN;
+      for (Thread* th : Threads)
+      {
+          MoveStats &stats = votes[th->rootMoves[0].pv[0]];
+          int64_t vote = stats.bestValue * stats.votes;
+          if (    stats.bestDepth > bestDepth
+              || (stats.bestDepth == bestDepth && vote > bestVote))
+          {
+              bestDepth = stats.bestDepth;
+              bestVote = vote;
               bestThread = th;
           }
       }
