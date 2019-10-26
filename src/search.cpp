@@ -662,6 +662,11 @@ namespace {
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+    if (   ttHit
+        && ttValue != VALUE_NONE
+        && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
+        && VALUE_MATE - std::abs(ttValue) >= 100 - (pos.rule50_count() - ss->ply))
+        ttHit = false;
     ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
             : ttHit    ? tte->move() : MOVE_NONE;
     ttPv = PvNode || (ttHit && tte->is_pv());
@@ -900,6 +905,11 @@ namespace {
 
         tte = TT.probe(posKey, ttHit);
         ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+        if (   ttHit
+            && ttValue != VALUE_NONE
+            && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
+            && VALUE_MATE - std::abs(ttValue) >= 100 - (pos.rule50_count() - ss->ply))
+            ttHit = false;
         ttMove = ttHit ? tte->move() : MOVE_NONE;
     }
 
@@ -1352,6 +1362,11 @@ moves_loop: // When in check, search starts from here
     posKey = pos.key();
     tte = TT.probe(posKey, ttHit);
     ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
+    if (   ttHit
+        && ttValue != VALUE_NONE
+        && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
+        && VALUE_MATE - std::abs(ttValue) >= 100 - (pos.rule50_count() - ss->ply))
+        ttHit = false;
     ttMove = ttHit ? tte->move() : MOVE_NONE;
     pvHit = ttHit && tte->is_pv();
 
