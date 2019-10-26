@@ -559,6 +559,22 @@ void Thread::search() {
 
 namespace {
 
+  static TTEntry *probeTT(const Position &pos, Stack* ss, Key posKey,
+                          bool &ttHit, Value &ttValue, Move &ttMove) {
+
+    TTEntry *tte = TT.probe(posKey, ttHit);
+    ttValue = tte->value();
+    // Disregard TT hit if mate score is shorter than remaining 50 MR plies.
+    if (   ttHit
+        && ttValue != VALUE_NONE
+        && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
+        && VALUE_MATE - std::abs(ttValue) >= 100 - pos.rule50_count())
+        ttHit = false;
+    ttValue = ttHit ? value_from_tt(ttValue, ss->ply) : VALUE_NONE;
+    ttMove = ttHit ? tte->move() : MOVE_NONE;
+    return tte;
+  }
+
   // search<>() is the main search function for both PV and non-PV nodes
 
   template <NodeType NT>
@@ -660,15 +676,8 @@ namespace {
     // position key in case of an excluded move.
     excludedMove = ss->excludedMove;
     posKey = pos.key() ^ Key(excludedMove << 16); // Isn't a very good hash
-    tte = TT.probe(posKey, ttHit);
-    ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-    if (   ttHit
-        && ttValue != VALUE_NONE
-        && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
-        && VALUE_MATE - std::abs(ttValue) >= 100 - (pos.rule50_count() - ss->ply))
-        ttHit = false;
-    ttMove =  rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
-            : ttHit    ? tte->move() : MOVE_NONE;
+    tte = probeTT(pos, ss, posKey, ttHit, ttValue, ttMove);
+    ttMove = rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0] : ttMove;
     ttPv = PvNode || (ttHit && tte->is_pv());
 
     // At non-PV nodes we check for an early TT cutoff
@@ -903,14 +912,7 @@ namespace {
     {
         search<NT>(pos, ss, alpha, beta, depth - 7, cutNode);
 
-        tte = TT.probe(posKey, ttHit);
-        ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-        if (   ttHit
-            && ttValue != VALUE_NONE
-            && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
-            && VALUE_MATE - std::abs(ttValue) >= 100 - (pos.rule50_count() - ss->ply))
-            ttHit = false;
-        ttMove = ttHit ? tte->move() : MOVE_NONE;
+        tte = probeTT(pos, ss, posKey, ttHit, ttValue, ttMove);
     }
 
 moves_loop: // When in check, search starts from here
@@ -1360,14 +1362,7 @@ moves_loop: // When in check, search starts from here
                                                   : DEPTH_QS_NO_CHECKS;
     // Transposition table lookup
     posKey = pos.key();
-    tte = TT.probe(posKey, ttHit);
-    ttValue = ttHit ? value_from_tt(tte->value(), ss->ply) : VALUE_NONE;
-    if (   ttHit
-        && ttValue != VALUE_NONE
-        && std::abs(ttValue) >= VALUE_MATE_IN_MAX_PLY
-        && VALUE_MATE - std::abs(ttValue) >= 100 - (pos.rule50_count() - ss->ply))
-        ttHit = false;
-    ttMove = ttHit ? tte->move() : MOVE_NONE;
+    tte = probeTT(pos, ss, posKey, ttHit, ttValue, ttMove);
     pvHit = ttHit && tte->is_pv();
 
     if (  !PvNode
